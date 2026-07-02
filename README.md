@@ -14,14 +14,18 @@ see in Event Viewer window.
 
 ## Fork info
 
-This is a fork of https://github.com/bi-zone/etw that adds some functionality, especially:
+This is the KloudMate fork of [secDre4mer/etw](https://github.com/secDre4mer/etw), which is itself a
+fork of [bi-zone/etw](https://github.com/bi-zone/etw). It keeps the MIT license and adds/inherits,
+especially:
+ - **Building without CGO** (pure Go, `CGO_ENABLED=0`) — no MinGW/`tdh` link step required
  - Looking up (manifest) providers at runtime
- - Building without CGO
  - Filtering on ETW sessions
  - Registering for multiple providers in a single ETW session
 
+See [NOTICE](./NOTICE) for attribution. Upstream fixes should be tracked from `secDre4mer/etw`.
+
 ## Docs
-Package reference is available at https://pkg.go.dev/github.com/secDre4mer/etw
+Package reference is available at https://pkg.go.dev/github.com/kloudmate/etw
 
 Examples are located in [examples](./examples) folder.
 
@@ -36,7 +40,7 @@ import (
 	"os/signal"
 	"sync"
 
-	"github.com/secDre4mer/etw"
+	"github.com/kloudmate/etw"
 )
 
 func main() {

@@ -1,0 +1,21 @@
+github.com/kloudmate/etw
+
+This product includes software developed by BI.ZONE and contributors.
+
+It is distributed under the MIT License (see LICENSE), Copyright (c) 2020 BI.ZONE.
+
+Provenance / attribution
+-------------------------
+
+  * Original library:      github.com/bi-zone/etw          (MIT, Copyright (c) 2020 BI.ZONE)
+  * Pure-Go (CGO-free)
+    derivative adopted as
+    this fork's base:      github.com/secDre4mer/etw        (MIT; removed the CGO/C layer,
+                                                             reimplementing the ETW bindings in
+                                                             pure Go via golang.org/x/sys/windows
+                                                             syscalls and windows.NewCallback)
+  * This fork:             github.com/kloudmate/etw         (MIT; re-homed for use in KloudMate,
+                                                             tracks upstream fixes from
+                                                             github.com/secDre4mer/etw)
+
+The MIT copyright and permission notice in LICENSE is preserved from the original work, as required.
