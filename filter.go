@@ -103,7 +103,7 @@ func (e EventPayloadFilter) EventFilterDescriptor() (EventFilterDescriptor, erro
 	if err != nil {
 		return EventFilterDescriptor{}, fmt.Errorf("TdhCreatePayloadFilter failed with %w", err)
 	}
-	defer deletePayloadFilter(&payloadFilter)
+	defer deletePayloadFilter(&payloadFilter) //nolint:errcheck // best-effort cleanup
 	var filterDescriptor eventFilterDescriptorC
 	err = aggregatePayloadFilters(
 		1,

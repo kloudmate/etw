@@ -10,12 +10,14 @@ on:
 
 jobs:
   lint:
-    # Fresh golangci-lint wont work on Windows
     runs-on: ubuntu-latest
-    container: dockercore/golang-cross
     
     steps:
     - uses: actions/checkout@v4
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
 
     - name: Install golangci-lint
       run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | bash -s -- -d -b $(go env GOPATH)/bin v1.64.8

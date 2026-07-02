@@ -3,4 +3,4 @@
 export GOOS=windows
 export CGO_ENABLED=0
 
-GOARCH=$(go env GOARCH)
+export GOARCH=$(go env GOARCH)

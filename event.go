@@ -254,8 +254,8 @@ type propertyParser struct {
 }
 
 func (p *propertyParser) free() {
-	eventInfoBufferPool.Put(p.infoBuffer)
-	dataBufferPool.Put(p.parseBuffer)
+	eventInfoBufferPool.Put(p.infoBuffer) //nolint:staticcheck // SA6002: byte-slice pool is intentional
+	dataBufferPool.Put(p.parseBuffer)     //nolint:staticcheck // SA6002: byte-slice pool is intentional
 }
 
 func newPropertyParser(r *eventRecordC, ignoreMapInfo bool) (*propertyParser, error) {

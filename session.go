@@ -163,7 +163,7 @@ func (s *Session) Close() error {
 	// "Be sure to disable all providers before stopping the session."
 	// https://docs.microsoft.com/en-us/windows/win32/etw/configuring-and-starting-an-event-tracing-session
 	if err := s.unsubscribeFromProviders(); err != nil {
-		s.stopSession()
+		s.stopSession() //nolint:errcheck // best-effort cleanup on error path
 		return fmt.Errorf("failed to disable provider; %w", err)
 	}
 
@@ -421,7 +421,7 @@ func (s *Session) subscribeToProvider(provider windows.GUID, options ProviderOpt
 				return err
 			}
 			if descriptor.Close != nil {
-				defer descriptor.Close()
+				defer descriptor.Close() //nolint:errcheck // best-effort cleanup
 			}
 			filterDescriptors[index] = descriptor.Descriptor
 			index++
@@ -501,7 +501,7 @@ func (s *Session) processEvents(callbackContextKey uintptr) error {
 	if err != nil {
 		return fmt.Errorf("OpenTraceW failed; %w", err)
 	}
-	defer closeTrace(traceHandle)
+	defer closeTrace(traceHandle) //nolint:errcheck // best-effort cleanup
 
 	// BLOCKS UNTIL CLOSED!
 	err = processTrace(&traceHandle, 1, nil, nil)

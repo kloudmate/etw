@@ -32,7 +32,7 @@ func ReadEtlFile(path string, callback EventCallback, options ...SessionOption) 
 	if err != nil {
 		return fmt.Errorf("OpenTraceW failed; %w", err)
 	}
-	defer closeTrace(traceHandle)
+	defer closeTrace(traceHandle) //nolint:errcheck // best-effort cleanup
 
 	err = processTrace(&traceHandle, 1, nil, nil)
 	if err != nil {
