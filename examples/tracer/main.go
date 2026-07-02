@@ -1,4 +1,5 @@
-//+build windows
+//go:build windows
+// +build windows
 
 package main
 
@@ -14,7 +15,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/bi-zone/etw"
+	"github.com/secDre4mer/etw"
 )
 
 func main() {
@@ -36,9 +37,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Incorrect GUID given; %s", err)
 	}
-	session, err := etw.NewSession(guid)
+	session, err := etw.NewSession()
 	if err != nil {
 		log.Fatalf("Failed to create etw session; %s", err)
+	}
+	if err := session.AddProvider(guid); err != nil {
+		log.Fatalf("Failed to register for provider: %v", err)
 	}
 
 	enc := json.NewEncoder(os.Stdout)

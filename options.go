@@ -1,11 +1,7 @@
-//+build windows
+//go:build windows
+// +build windows
 
 package etw
-
-/*
-	#include "windows.h"
-*/
-import "C"
 
 // SessionOptions describes Session subscription options.
 //
@@ -17,6 +13,69 @@ type SessionOptions struct {
 	// unique.
 	Name string
 
+	// Ignore any event map information that might have to be parsed from the provider manifest.
+	// This can speed up event formatting considerably, but enums or bit maps will no longer
+	// be formatted.
+	IgnoreMapInfo bool
+
+	// Flags to enable on the session. This is only meaningful for a kernel session.
+	Flags []EnableFlag
+
+	LogFileModes []LogFileMode
+
+	Kernel bool
+
+	// Maximum size of the file used to buffer events, in MB
+	MaximumFileSize uint32
+}
+
+// SessionOption is any function that modifies SessionOptions. Options will be called
+// on default config in NewSession. Subsequent options that modifies same
+// fields will override each other.
+type SessionOption func(cfg *SessionOptions)
+
+// WithName specifies a provided @name for the creating session. Further that
+// session could be controlled from other processed by it's name, so it should be
+// unique.
+func WithName(name string) SessionOption {
+	return func(cfg *SessionOptions) {
+		cfg.Name = name
+	}
+}
+
+// WithName specifies a maximum file size for the created session. A session may use
+// disk space up to the specified amount in MB.
+func WithMaximumFileSize(maximumFileSize uint32) SessionOption {
+	return func(cfg *SessionOptions) {
+		cfg.MaximumFileSize = maximumFileSize
+	}
+}
+
+// IgnoreMapInfo specifies whether event map information should be processed.
+// SessionOptions.IgnoreMapInfo has further information on this.
+func IgnoreMapInfo(ignoreMapInfo bool) SessionOption {
+	return func(cfg *SessionOptions) {
+		cfg.IgnoreMapInfo = ignoreMapInfo
+	}
+}
+
+// EnableFlags enables specific flags that specify which events to receive from a kernel
+// session. This option is ignored for non-kernel sessions.
+func EnableFlags(flags ...EnableFlag) SessionOption {
+	return func(cfg *SessionOptions) {
+		cfg.Flags = append(cfg.Flags, flags...)
+	}
+}
+
+// EnableLogModes sets flags that specify properties of the session.
+func EnableLogModes(modes ...LogFileMode) SessionOption {
+	return func(cfg *SessionOptions) {
+		cfg.LogFileModes = append(cfg.LogFileModes, modes...)
+	}
+}
+
+// ProviderOptions describes subscription options for a single provider.
+type ProviderOptions struct {
 	// Level represents provider-defined value that specifies the level of
 	// detail included in the event. Higher levels imply that you get lower
 	// levels as well. For example, with TRACE_LEVEL_ERROR you'll get all
@@ -55,27 +114,29 @@ type SessionOptions struct {
 	// original API reference:
 	// https://docs.microsoft.com/en-us/windows/win32/api/evntrace/ns-evntrace-enable_trace_parameters
 	EnableProperties []EnableProperty
+
+	// Filters defines a set of filters that limit the events which are sent by the provider.
+	// For a full list of possible filters, see here:
+	// https://docs.microsoft.com/en-us/windows/win32/api/evntprov/ns-evntprov-event_filter_descriptor
+	// If multiple Filters with the same filter type are specified, they are merged; check the filter
+	// type on what can be merged.
+	Filters []EventFilter
+
+	// TriggerRundown requests a log of the provider's state information. This typically causes a number
+	// of rundown events to be sent at the provider's start.
+	TriggerRundown bool
 }
 
-// Option is any function that modifies SessionOptions. Options will be called
+// ProviderOption is any function that modifies ProviderOptions. Options will be called
 // on default config in NewSession. Subsequent options that modifies same
 // fields will override each other.
-type Option func(cfg *SessionOptions)
-
-// WithName specifies a provided @name for the creating session. Further that
-// session could be controlled from other processed by it's name, so it should be
-// unique.
-func WithName(name string) Option {
-	return func(cfg *SessionOptions) {
-		cfg.Name = name
-	}
-}
+type ProviderOption func(cfg *ProviderOptions)
 
 // WithLevel specifies a maximum level consumer is interested in. Higher levels
 // imply that you get lower levels as well. For example, with TRACE_LEVEL_ERROR
 // you'll get all events except ones with level critical.
-func WithLevel(lvl TraceLevel) Option {
-	return func(cfg *SessionOptions) {
+func WithLevel(lvl TraceLevel) ProviderOption {
+	return func(cfg *ProviderOptions) {
 		cfg.Level = lvl
 	}
 }
@@ -87,11 +148,12 @@ func WithLevel(lvl TraceLevel) Option {
 // A session will receive only those events whose keywords masks has ANY of
 // @anyKeyword and ALL of @allKeyword bits sets.
 //
-// For more info take a look a SessionOptions docs. To query keywords defined
+// For more info take a look a ProviderOptions docs. To query keywords defined
 // by specific provider identified by <GUID> try:
-//     logman query providers <GUID>
-func WithMatchKeywords(anyKeyword, allKeyword uint64) Option {
-	return func(cfg *SessionOptions) {
+//
+//	logman query providers <GUID>
+func WithMatchKeywords(anyKeyword, allKeyword uint64) ProviderOption {
+	return func(cfg *ProviderOptions) {
 		cfg.MatchAnyKeyword = anyKeyword
 		cfg.MatchAllKeyword = allKeyword
 	}
@@ -103,16 +165,33 @@ func WithMatchKeywords(anyKeyword, allKeyword uint64) Option {
 // For more info about available properties check EnableProperty doc and
 // original API reference:
 // https://docs.microsoft.com/en-us/windows/win32/api/evntrace/ns-evntrace-enable_trace_parameters
-func WithProperty(p EnableProperty) Option {
-	return func(cfg *SessionOptions) {
+func WithProperty(p EnableProperty) ProviderOption {
+	return func(cfg *ProviderOptions) {
 		cfg.EnableProperties = append(cfg.EnableProperties, p)
+	}
+}
+
+// WithFilter limits the events that the provider sends. Multiple filters can
+// be specified to limit the events even further.
+// If multiple Filters with the same filter type are specified, they are merged; check the filter
+// type on what can be merged.
+func WithFilter(f EventFilter) ProviderOption {
+	return func(cfg *ProviderOptions) {
+		cfg.Filters = append(cfg.Filters, f)
+	}
+}
+
+// WithRundown requests a rundown of the current provider state when the provider is added.
+func WithRundown(withRundown bool) ProviderOption {
+	return func(cfg *ProviderOptions) {
+		cfg.TriggerRundown = withRundown
 	}
 }
 
 // TraceLevel represents provider-defined value that specifies the level of
 // detail included in the event. Higher levels imply that you get lower
 // levels as well.
-type TraceLevel C.UCHAR
+type TraceLevel uint8
 
 //nolint:golint,stylecheck // We keep original names to underline that it's an external constants.
 const (
@@ -127,7 +206,7 @@ const (
 //
 // For more info about available properties check original API reference:
 // https://docs.microsoft.com/en-us/windows/win32/api/evntrace/ns-evntrace-enable_trace_parameters
-type EnableProperty C.ULONG
+type EnableProperty uint32
 
 //nolint:golint,stylecheck // We keep original names to underline that it's an external constants.
 const (
@@ -151,4 +230,72 @@ const (
 	// or personal. It is up to the process or event to designate itself as
 	// InPrivate for this to work.
 	EVENT_ENABLE_PROPERTY_EXCLUDE_INPRIVATE = EnableProperty(0x200)
+)
+
+type EnableFlag uint32
+
+const (
+	EVENT_TRACE_FLAG_PROCESS            EnableFlag = 0x00000001
+	EVENT_TRACE_FLAG_THREAD             EnableFlag = 0x00000002
+	EVENT_TRACE_FLAG_IMAGE_LOAD         EnableFlag = 0x00000004
+	EVENT_TRACE_FLAG_DISK_IO            EnableFlag = 0x00000100
+	EVENT_TRACE_FLAG_DISK_FILE_IO       EnableFlag = 0x00000200
+	EVENT_TRACE_FLAG_MEMORY_PAGE_FAULTS EnableFlag = 0x00001000
+	EVENT_TRACE_FLAG_MEMORY_HARD_FAULTS EnableFlag = 0x00002000
+	EVENT_TRACE_FLAG_NETWORK_TCPIP      EnableFlag = 0x00010000
+	EVENT_TRACE_FLAG_REGISTRY           EnableFlag = 0x00020000
+	EVENT_TRACE_FLAG_DBGPRINT           EnableFlag = 0x00040000
+	EVENT_TRACE_FLAG_PROCESS_COUNTERS   EnableFlag = 0x00000008
+	EVENT_TRACE_FLAG_CSWITCH            EnableFlag = 0x00000010
+	EVENT_TRACE_FLAG_DPC                EnableFlag = 0x00000020
+	EVENT_TRACE_FLAG_INTERRUPT          EnableFlag = 0x00000040
+	EVENT_TRACE_FLAG_SYSTEMCALL         EnableFlag = 0x00000080
+	EVENT_TRACE_FLAG_DISK_IO_INIT       EnableFlag = 0x00000400
+	EVENT_TRACE_FLAG_ALPC               EnableFlag = 0x00100000
+	EVENT_TRACE_FLAG_SPLIT_IO           EnableFlag = 0x00200000
+	EVENT_TRACE_FLAG_DRIVER             EnableFlag = 0x00800000
+	EVENT_TRACE_FLAG_PROFILE            EnableFlag = 0x01000000
+	EVENT_TRACE_FLAG_FILE_IO            EnableFlag = 0x02000000
+	EVENT_TRACE_FLAG_FILE_IO_INIT       EnableFlag = 0x04000000
+	EVENT_TRACE_FLAG_DISPATCHER         EnableFlag = 0x00000800
+	EVENT_TRACE_FLAG_VIRTUAL_ALLOC      EnableFlag = 0x00004000
+	EVENT_TRACE_FLAG_VAMAP              EnableFlag = 0x00008000
+	EVENT_TRACE_FLAG_NO_SYSCONFIG       EnableFlag = 0x10000000
+	EVENT_TRACE_FLAG_JOB                EnableFlag = 0x00080000
+	EVENT_TRACE_FLAG_DEBUG_EVENTS       EnableFlag = 0x00400000
+	EVENT_TRACE_FLAG_EXTENSION          EnableFlag = 0x80000000
+	EVENT_TRACE_FLAG_FORWARD_WMI        EnableFlag = 0x40000000
+	EVENT_TRACE_FLAG_ENABLE_RESERVE     EnableFlag = 0x20000000
+
+	EVENT_TRACE_FLAG_OBTRACE EnableFlag = 0x80000040
+
+	// EVENT_TRACE_FLAG_RUNDOWN is not a real flag, but another undefined behavior.
+	// Use to cause a call TraceSetInformation with an empty mask, which activates rundown events.
+	EVENT_TRACE_FLAG_RUNDOWN EnableFlag = 0x00000000
+)
+
+// Map with all events that must be set via the 5th byte in TraceSetInformation instead of the normal EnableFlags
+var traceSetInformationFlags = map[EnableFlag]bool{
+	EVENT_TRACE_FLAG_OBTRACE: true,
+}
+
+type LogFileMode uint32
+
+const (
+	// EVENT_TRACE_SECURE_MODE specifies that secure mode should be enabled on the session.
+	// This restricts who may log events to the session.
+	EVENT_TRACE_SECURE_MODE = LogFileMode(0x00000080)
+
+	// EVENT_TRACE_SYSTEM_LOGGER_MODE specifies that the session will receive events from the
+	// SystemTraceProvider.
+	EVENT_TRACE_SYSTEM_LOGGER_MODE = LogFileMode(0x02000000)
+
+	// EVENT_TRACE_INDEPENDENT_SESSION_MODE specifies that this session should not be affected
+	// by failures in other ETW sessions.
+	EVENT_TRACE_INDEPENDENT_SESSION_MODE = LogFileMode(0x08000000)
+)
+
+const (
+	// kernelLoggerName is the name of the kernel logging ETW session that exists on older machines.
+	kernelLoggerName = "NT Kernel Logger"
 )
