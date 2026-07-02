@@ -15,11 +15,10 @@ jobs:
     container: dockercore/golang-cross
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
-    # Someday we'll switch to official action, but right now we depend on CGO Windows-specific stuff
     - name: Install golangci-lint
-      run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | bash -s -- -d -b $(go env GOPATH)/bin v1.27.0
+      run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | bash -s -- -d -b $(go env GOPATH)/bin v1.64.8
 
     - name: Lint the code
       run: |
@@ -29,7 +28,7 @@ jobs:
   test:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Test the code
         run: bash ./build/test.sh

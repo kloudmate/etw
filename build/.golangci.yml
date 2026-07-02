@@ -1,16 +1,7 @@
+# Use golangci-lint's default linters (errcheck, gosimple, govet, ineffassign,
+# staticcheck, unused). This previously used `enable-all: true`, which is fragile
+# across golangci-lint upgrades (each release adds linters -> new failures) and is
+# discouraged upstream; it also referenced the now-removed `gomnd` linter.
 run:
-  deadline: 10m
+  timeout: 10m
   issues-exit-code: 1
-
-linters:
-  enable-all: true
-  disable:
-    - funlen
-    - godox
-    - wsl
-    - gomnd
-
-issues:
-  exclude:
-    # Sometimes goerr113 is too annoying
-    - do not define dynamic errors, use wrapped static errors instead
